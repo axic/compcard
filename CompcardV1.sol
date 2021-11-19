@@ -4,11 +4,15 @@ pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 
+import "./Base64.sol";
+
 contract CompcardV1 is ERC721 {
     mapping (uint256 => string) private cards;
 
     /// The next claimable tokenId.
     uint256 public nextTokenId;
+
+    error NotSupported();
 
     constructor() ERC721("Compcard V1", "CCV1") {
     }
@@ -24,5 +28,22 @@ contract CompcardV1 is ERC721 {
 
     function tokenURI(uint256 tokenId) public override view returns (string memory) {
         return cards[tokenId];
+    }
+
+    /// This can be used to convert an image into a data URL.
+    /// Ideally this is used off-chain.
+    function toDataURL(bytes calldata image) external pure returns (string memory) {
+        bool jpeg;
+        if (image[0] == 0xff && image[1] == 0xd8 && image[2] == 0xff) {
+            jpeg = true;
+        } else if (keccak256(image[0:8]) != keccak256(hex"89504e470d0a1a0a")) {
+            revert NotSupported();
+        }
+
+        return string(bytes.concat(
+            "data:",
+            jpeg ? bytes("image/jpeg;base64,") : bytes("image/png;base64,"),
+            bytes(Base64.encode(image))
+        ));
     }
 }
