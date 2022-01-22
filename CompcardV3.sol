@@ -30,9 +30,14 @@ contract CompcardV3Factory {
         if (bytes(name).length > 256) revert NotSupported();
         if (bytes(symbol).length > 256) revert NotSupported();
 
+        uint256 payloadLength = 45 + 20 + 2 + bytes(name).length + bytes(symbol).length + bytes(url).length;
+
         bytes memory bytecode = abi.encodePacked(
             // TODO: use more efficient code (and vanity address)
-            hex"3d602d80600a3d3981f3363d3d373d3d3d363d73",
+            hex"3d61",
+            uint8(payloadLength >> 8),
+            uint8(payloadLength & 0xff),
+            hex"80600b3d3981f3363d3d373d3d3d363d73",
             implementation,
             hex"5af43d82803e903d91602b57fd5bf3",
             msg.sender,
