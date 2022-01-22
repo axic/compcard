@@ -4,6 +4,7 @@ pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import "@openzeppelin/contracts/token/ERC721/extensions/IERC721Metadata.sol";
+import "@openzeppelin/contracts/token/ERC721/extensions/IERC721Enumerable.sol";
 import "@openzeppelin/contracts/utils/introspection/ERC165.sol";
 
 import "./Base64.sol";
@@ -12,7 +13,7 @@ import "./Base64.sol";
 contract CompcardV3Factory {
     address public immutable implementation;
 
-    event CompcardDeployed(string name, string symbol, address token);
+    event CompcardDeployed(string name, string symbol, address token, uint256 tokenId);
 
     error DeployFailed();
     error NotSupported();
@@ -25,7 +26,7 @@ contract CompcardV3Factory {
     /// Claim a new Compcard PFP.
     /// @param url A URL pointing to your image, preferably on a content-addressible URL, such as IPFS.
     /// @return token The minted token address.
-    /// @return tokenId The minted tokenId (always 0).
+    /// @return tokenId The minted tokenId (always 1).
     function claim(string calldata name, string calldata symbol, string calldata url) external returns (address token, uint256 tokenId) {
         if (bytes(name).length > 256) revert NotSupported();
         if (bytes(symbol).length > 256) revert NotSupported();
@@ -53,7 +54,8 @@ contract CompcardV3Factory {
         if (token == address(0)) {
             revert DeployFailed();
         }
-        emit CompcardDeployed(name, symbol, token);
+        tokenId = 1;
+        emit CompcardDeployed(name, symbol, token, tokenId);
     }
 
     /// This can be used to convert an image into a data URL.
@@ -86,7 +88,7 @@ contract CompcardV3Factory {
 /// - n bytes: name
 /// - n bytes: symbol
 /// - the remaining bytes: url
-contract CompcardV3 is IERC721, IERC721Metadata, ERC165 {
+contract CompcardV3 is IERC721, IERC721Metadata, IERC721Enumerable, ERC165 {
     uint256 private constant RUNTIME_CODE_LENGTH = 45; // TODO: add proper length
 
     error NotSupported();
@@ -147,18 +149,17 @@ contract CompcardV3 is IERC721, IERC721Metadata, ERC165 {
     }
 
     function tokenURI(uint256 tokenId) public view virtual override returns (string memory ret) {
-        require(tokenId == 0);
+        require(tokenId == 1);
         // TODO: this is wasting memory by loading everything
         (, , ret) = readSettings();
     }
 
     function balanceOf(address owner) external override view returns (uint256) {
-        require(owner == readOwner());
-        return 0;
+        return (owner == readOwner()) ? 1 : 0;
     }
 
     function ownerOf(uint256 tokenId) external override view returns (address) {
-        require(tokenId == 0);
+        require(tokenId == 1);
         return readOwner();
     }
 
@@ -200,10 +201,23 @@ contract CompcardV3 is IERC721, IERC721Metadata, ERC165 {
     function isApprovedForAll(address owner, address operator) external override view returns (bool) {
     }
 
+    function totalSupply() external override pure returns (uint) {
+        return 1;
+    }
+
+    function tokenOfOwnerByIndex(address owner, uint256 index) external override view returns (uint256 tokenId) {
+        return ((owner == readOwner()) && (index == 0)) ? 1 : 0;
+    }
+
+    function tokenByIndex(uint256 index) external view returns (uint256) {
+        return (index == 0) ? 1 : 0;
+    }
+
     function supportsInterface(bytes4 interfaceId) public view virtual override(ERC165, IERC165) returns (bool) {
         return
             interfaceId == type(IERC721).interfaceId ||
             interfaceId == type(IERC721Metadata).interfaceId ||
+            interfaceId == type(IERC721Enumerable).interfaceId ||
             super.supportsInterface(interfaceId);
     }
 }
