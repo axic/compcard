@@ -91,6 +91,7 @@ contract CompcardV3 is IERC721, IERC721Metadata, IERC721Enumerable, ERC165 {
     uint256 private constant RUNTIME_CODE_LENGTH = 45; // TODO: add proper length
 
     error NotSupported();
+    error NotFound();
 
     function readOwner() private view returns (address owner) {
         uint256 proxyLength = RUNTIME_CODE_LENGTH;
@@ -148,7 +149,7 @@ contract CompcardV3 is IERC721, IERC721Metadata, IERC721Enumerable, ERC165 {
     }
 
     function tokenURI(uint256 tokenId) public view virtual override returns (string memory ret) {
-        require(tokenId == 0);
+        if (tokenId != 0) revert NotFound();
         // TODO: this is wasting memory by loading everything
         (, , ret) = readSettings();
     }
@@ -158,7 +159,7 @@ contract CompcardV3 is IERC721, IERC721Metadata, IERC721Enumerable, ERC165 {
     }
 
     function ownerOf(uint256 tokenId) external override view returns (address) {
-        require(tokenId == 0);
+        if (tokenId != 0) revert NotFound();
         return readOwner();
     }
 
@@ -167,7 +168,7 @@ contract CompcardV3 is IERC721, IERC721Metadata, IERC721Enumerable, ERC165 {
         address to,
         uint256 tokenId
     ) external override {
-        revert();
+        revert NotSupported();
     }
 
     function transferFrom(
@@ -175,7 +176,7 @@ contract CompcardV3 is IERC721, IERC721Metadata, IERC721Enumerable, ERC165 {
         address to,
         uint256 tokenId
     ) external override {
-        revert();
+        revert NotSupported();
     }
 
     function safeTransferFrom(
@@ -184,20 +185,23 @@ contract CompcardV3 is IERC721, IERC721Metadata, IERC721Enumerable, ERC165 {
         uint256 tokenId,
         bytes calldata data
     ) external override {
-        revert();
+        revert NotSupported();
     }
-     function approve(address to, uint256 tokenId) external override {
-        revert();
+
+    function approve(address to, uint256 tokenId) external override {
+        revert NotSupported();
     }
 
     function getApproved(uint256 tokenId) external override view returns (address operator) {
+        revert NotSupported();
     }
 
     function setApprovalForAll(address operator, bool _approved) external override {
-        revert();
+        revert NotSupported();
     }
 
     function isApprovedForAll(address owner, address operator) external override view returns (bool) {
+        // False.
     }
 
     function totalSupply() external override pure returns (uint) {
@@ -205,12 +209,13 @@ contract CompcardV3 is IERC721, IERC721Metadata, IERC721Enumerable, ERC165 {
     }
 
     function tokenOfOwnerByIndex(address owner, uint256 index) external override view returns (uint256 tokenId) {
-        require((owner == readOwner()) && (index < 1));
+        if ((owner != readOwner()) || (index != 0)) revert NotFound();
         // The tokenId issued is 0.
     }
 
     function tokenByIndex(uint256 index) external view returns (uint256) {
-        require(index < 1);
+        if (index != 0) revert NotFound();
+        // The tokenId issued is 0.
     }
 
     function supportsInterface(bytes4 interfaceId) public view virtual override(ERC165, IERC165) returns (bool) {
