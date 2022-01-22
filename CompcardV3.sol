@@ -9,31 +9,23 @@ import "@openzeppelin/contracts/utils/introspection/ERC165.sol";
 import "./Base64.sol";
 
 /// This creates non-transferable immutable 1/1 NFTs.
-///
-/// Should transferability be preferred, the owner field should moved to be a storage item.
-///
-/// The design is a proxy contract, which contains most of the details as "immutables"
-/// concatenated at the end of the contract. The layout is specific:
-/// - 20 bytes: owner
-/// - 1 byte: length of name
-/// - 1 byte: length of symbol
-/// - n bytes: name
-/// - n bytes: symbol
-/// - the remaining bytes: url
-contract CompcardV3 is IERC721, IERC721Metadata, ERC165 {
-    uint256 private constant RUNTIME_CODE_LENGTH = 45; // TODO: add proper length
+contract CompcardV3Factory {
+    address public immutable implementation;
 
     event CompcardDeployed(string name, string symbol, address token);
 
     error DeployFailed();
     error NotSupported();
 
+    constructor() {
+        // TODO: use salt for vanity address or pass in the implementation address
+        implementation = address(new CompcardV3());
+    }
+
     /// Claim a new Compcard PFP.
     /// @param url A URL pointing to your image, preferably on a content-addressible URL, such as IPFS.
     /// @return token The minted token address.
     /// @return tokenId The minted tokenId (always 0).
-    //
-    // TODO: should separate this out into a factory
     function claim(string calldata name, string calldata symbol, string calldata url) external returns (address token, uint256 tokenId) {
         if (bytes(name).length > 256) revert NotSupported();
         if (bytes(symbol).length > 256) revert NotSupported();
@@ -41,7 +33,7 @@ contract CompcardV3 is IERC721, IERC721Metadata, ERC165 {
         bytes memory bytecode = abi.encodePacked(
             // TODO: use more efficient code (and vanity address)
             hex"3d602d80600a3d3981f3363d3d373d3d3d363d73",
-            address(this),
+            implementation,
             hex"5af43d82803e903d91602b57fd5bf3",
             msg.sender,
             uint8(bytes(name).length),
@@ -58,6 +50,41 @@ contract CompcardV3 is IERC721, IERC721Metadata, ERC165 {
         }
         emit CompcardDeployed(name, symbol, token);
     }
+
+    /// This can be used to convert an image into a data URL.
+    /// Ideally this is used off-chain.
+    function toDataURL(bytes calldata image) external pure returns (string memory) {
+        bool jpeg;
+        if (image[0] == 0xff && image[1] == 0xd8 && image[2] == 0xff) {
+            jpeg = true;
+        } else if (keccak256(image[0:8]) != keccak256(hex"89504e470d0a1a0a")) {
+            revert NotSupported();
+        }
+
+        return string(bytes.concat(
+            "data:",
+            jpeg ? bytes("image/jpeg;base64,") : bytes("image/png;base64,"),
+            bytes(Base64.encode(image))
+        ));
+    }
+}
+
+/// This creates non-transferable immutable 1/1 NFTs.
+///
+/// Should transferability be preferred, the owner field should moved to be a storage item.
+///
+/// The design is a proxy contract, which contains most of the details as "immutables"
+/// concatenated at the end of the contract. The layout is specific:
+/// - 20 bytes: owner
+/// - 1 byte: length of name
+/// - 1 byte: length of symbol
+/// - n bytes: name
+/// - n bytes: symbol
+/// - the remaining bytes: url
+contract CompcardV3 is IERC721, IERC721Metadata, ERC165 {
+    uint256 private constant RUNTIME_CODE_LENGTH = 45; // TODO: add proper length
+
+    error NotSupported();
 
     function readOwner() private view returns (address owner) {
         uint256 proxyLength = RUNTIME_CODE_LENGTH;
@@ -173,22 +200,5 @@ contract CompcardV3 is IERC721, IERC721Metadata, ERC165 {
             interfaceId == type(IERC721).interfaceId ||
             interfaceId == type(IERC721Metadata).interfaceId ||
             super.supportsInterface(interfaceId);
-    }
-
-    /// This can be used to convert an image into a data URL.
-    /// Ideally this is used off-chain.
-    function toDataURL(bytes calldata image) external pure returns (string memory) {
-        bool jpeg;
-        if (image[0] == 0xff && image[1] == 0xd8 && image[2] == 0xff) {
-            jpeg = true;
-        } else if (keccak256(image[0:8]) != keccak256(hex"89504e470d0a1a0a")) {
-            revert NotSupported();
-        }
-
-        return string(bytes.concat(
-            "data:",
-            jpeg ? bytes("image/jpeg;base64,") : bytes("image/png;base64,"),
-            bytes(Base64.encode(image))
-        ));
     }
 }
