@@ -21,7 +21,7 @@ import "./Base64.sol";
 /// - n bytes: symbol
 /// - the remaining bytes: url
 contract CompcardV3 is IERC721, IERC721Metadata, ERC165 {
-    uint256 private constant RUNTIME_CODE_LENGTH = 0; // TODO: add proper length
+    uint256 private constant RUNTIME_CODE_LENGTH = 45; // TODO: add proper length
 
     event CompcardDeployed(string name, string symbol, address token);
 
@@ -32,12 +32,17 @@ contract CompcardV3 is IERC721, IERC721Metadata, ERC165 {
     /// @param url A URL pointing to your image, preferably on a content-addressible URL, such as IPFS.
     /// @return token The minted token address.
     /// @return tokenId The minted tokenId (always 0).
+    //
+    // TODO: should separate this out into a factory
     function claim(string calldata name, string calldata symbol, string calldata url) external returns (address token, uint256 tokenId) {
         if (bytes(name).length > 256) revert NotSupported();
         if (bytes(symbol).length > 256) revert NotSupported();
 
         bytes memory bytecode = abi.encodePacked(
-            hex"", // TODO: add creation code
+            // TODO: use more efficient code (and vanity address)
+            hex"3d602d80600a3d3981f3363d3d373d3d3d363d73",
+            address(this),
+            hex"5af43d82803e903d91602b57fd5bf3",
             msg.sender,
             uint8(bytes(name).length),
             uint8(bytes(symbol).length),
