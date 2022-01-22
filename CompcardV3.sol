@@ -26,7 +26,7 @@ contract CompcardV3Factory {
     /// Claim a new Compcard PFP.
     /// @param url A URL pointing to your image, preferably on a content-addressible URL, such as IPFS.
     /// @return token The minted token address.
-    /// @return tokenId The minted tokenId (always 1).
+    /// @return tokenId The minted tokenId (always 0).
     function claim(string calldata name, string calldata symbol, string calldata url) external returns (address token, uint256 tokenId) {
         if (bytes(name).length > 256) revert NotSupported();
         if (bytes(symbol).length > 256) revert NotSupported();
@@ -54,7 +54,6 @@ contract CompcardV3Factory {
         if (token == address(0)) {
             revert DeployFailed();
         }
-        tokenId = 1;
         emit CompcardDeployed(name, symbol, token, tokenId);
     }
 
@@ -149,7 +148,7 @@ contract CompcardV3 is IERC721, IERC721Metadata, IERC721Enumerable, ERC165 {
     }
 
     function tokenURI(uint256 tokenId) public view virtual override returns (string memory ret) {
-        require(tokenId == 1);
+        require(tokenId == 0);
         // TODO: this is wasting memory by loading everything
         (, , ret) = readSettings();
     }
@@ -159,7 +158,7 @@ contract CompcardV3 is IERC721, IERC721Metadata, IERC721Enumerable, ERC165 {
     }
 
     function ownerOf(uint256 tokenId) external override view returns (address) {
-        require(tokenId == 1);
+        require(tokenId == 0);
         return readOwner();
     }
 
@@ -206,11 +205,12 @@ contract CompcardV3 is IERC721, IERC721Metadata, IERC721Enumerable, ERC165 {
     }
 
     function tokenOfOwnerByIndex(address owner, uint256 index) external override view returns (uint256 tokenId) {
-        return ((owner == readOwner()) && (index == 0)) ? 1 : 0;
+        require((owner == readOwner()) && (index < 1));
+        // The tokenId issued is 0.
     }
 
     function tokenByIndex(uint256 index) external view returns (uint256) {
-        return (index == 0) ? 1 : 0;
+        require(index < 1);
     }
 
     function supportsInterface(bytes4 interfaceId) public view virtual override(ERC165, IERC165) returns (bool) {
